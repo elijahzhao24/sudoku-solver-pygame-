@@ -3,6 +3,7 @@
 # Sudoku board player and solver (using recursive backtracking)
 # uses api to fetch boards from given url
 
+import copy
 import pygame
 from pip._vendor import requests
 pygame.init()
@@ -13,12 +14,13 @@ selected = 0
 
 response = requests.get("https://sugoku.onrender.com/board?difficulty=easy")
 grid = response.json()['board']
-original = []
+og_grid = copy.deepcopy(grid)
+original = set()
 
 for i in range(0, len(grid[0])):
     for j in range(0, len(grid[0])):
         if grid[i][j] != 0:
-            original.append([i + 1, j + 1])
+            original.add((i + 1, j + 1))
             
 
 
@@ -47,6 +49,26 @@ def main():
                 pygame.display.update()
             
 def drawboard(win, g):
+
+    row_invalid = check_row(g)
+    column_invalid = check_column(g)
+    cube_invalid = check_cube(g)
+
+    if row_invalid != 0:
+        pygame.draw.rect(win, (255, 153, 153), (50, (50 * row_invalid ), 450, 50))
+    if column_invalid != 0:
+        pygame.draw.rect(win, (255, 153, 153), ((50 * column_invalid), 50, 50, 450))
+    if cube_invalid != 0:
+        pygame.draw.rect(win, (255, 153, 153), ((((cube_invalid-1) % 3) * 150) + 50, (((cube_invalid-1 )//3) * 150) + 50, 150, 150))
+
+
+    if (0 < selected < 10):
+        pygame.draw.rect(win, (224, 224, 224), ((50 * selected), 550, 50, 50))
+    elif selected == 11:
+        pygame.draw.rect(win, (224, 224, 224), (50, 600, 50, 50))
+
+    
+
     for i in range(0, 10):
         if (i%3 == 0):
             pygame.draw.line(win, (0, 0, 0), (50 + 50*i, 50), (50 + 50*i, 500), 4)
@@ -77,7 +99,8 @@ def drawboard(win, g):
     
 def clicked(x, y):
     global selected
-    if (0 < x < 10) and (0 < y < 10) and not ([y, x] in original):
+    global grid
+    if (0 < x < 10) and (0 < y < 10) and not ((y, x) in original):
         if selected == 11:
             grid[y-1][x-1] = 0
         elif (0< selected< 10):
@@ -92,7 +115,85 @@ def clicked(x, y):
             selected = 0
         else:
             selected = 11
+    elif (y == 12) and (x == 2):
+        selected = 0
+        if solve(og_grid) != False:
+            grid = solve(og_grid)
+            print(grid)
         
+def check_row(g):
+    for i in range(0, len(g[0])):
+        temp = {}
+        for j in range(0, len(g[0])):
+            if g[i][j] in temp.keys():
+                return i + 1
+            if g[i][j] != 0:
+                temp[g[i][j]] = True
+    return 0
+
+def check_column(g):
+    for i in range(0, len(g[0])):
+        temp = {}
+        for j in range(0, len(g[0])):
+            if g[j][i] in temp.keys():
+                return i + 1
+            if g[j][i] != 0:
+                temp[g[j][i]] = True
+    return 0
+
+def check_cube(g):
+    for i in range(0, 7, 3):
+        for j in range(0, 3):
+            temp = {}
+            for k in range(0, 3):
+                for l in range(0, 3):
+                    if g[i+k][(j *3)+l] in temp.keys():
+                        return i + j + 1
+                    if g[i+k][(j *3)+l] != 0:
+                        temp[g[i+k][(j *3)+l]] = True
+    return 0
+
+def find_empty_location(g):
+    for i in range(9):
+        for j in range(9):
+            if(g[i][j] == 0):
+                return True
+    return False
+
+def find_first_spot(g):
+    for i in range(9):
+        for j in range(9):
+            if(g[i][j] == 0):
+                return [i, j]
+
+def valid_location(g, num, y, x):
+    g[y][x] = num
+
+    row_invalid = check_row(g)
+    column_invalid = check_column(g)
+    cube_invalid = check_cube(g)
+
+    if row_invalid != 0 or column_invalid != 0 or cube_invalid != 0:
+        return False
+    else:
+        return True
+
+
+def solve(g):
+    if (not find_empty_location(g)):
+        return g
+    empty_spot = find_first_spot(g)
+
+    for num in range(1, 10):
+        tempg = copy.deepcopy(g)
+        if valid_location(tempg, num, empty_spot[0], empty_spot[1]):
+            tempg[empty_spot[0]][empty_spot[1]] = num
+            solved = solve(tempg)
+            if solved != False:
+                return solved
+            else:
+                continue 
+    return False
 
 main()
 
