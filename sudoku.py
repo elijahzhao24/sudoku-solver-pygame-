@@ -11,6 +11,7 @@ pygame.init()
 WIDTH = 550
 BG_COLOR = (251, 247, 244)
 selected = 0
+window = pygame.display.set_mode((WIDTH, WIDTH + 150))
 
 response = requests.get("https://sugoku.onrender.com/board?difficulty=easy")
 grid = response.json()['board']
@@ -29,8 +30,8 @@ font2 = pygame.font.SysFont('Comic Sans MS', 12)
 
 
 def main():
+    global window
     pygame.init()
-    window = pygame.display.set_mode((WIDTH, WIDTH + 150))
     window.fill(BG_COLOR)
     drawboard(window, grid)
     pygame.display.update()
@@ -180,6 +181,7 @@ def valid_location(g, num, y, x):
 
 
 def solve(g):
+    global window
     if (not find_empty_location(g)):
         return g
     empty_spot = find_first_spot(g)
@@ -188,6 +190,9 @@ def solve(g):
         tempg = copy.deepcopy(g)
         if valid_location(tempg, num, empty_spot[0], empty_spot[1]):
             tempg[empty_spot[0]][empty_spot[1]] = num
+            window.fill(BG_COLOR)
+            drawboard(window, tempg)
+            pygame.display.update()
             solved = solve(tempg)
             if solved != False:
                 return solved
